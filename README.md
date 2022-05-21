@@ -15,6 +15,8 @@ library(tidyverse)
 library(exactextractr)
 library(tmap)
 library(leaflet)
+library(DT)
+library(kableExtra)
 source('wrap_labels.R')
 ```
 
@@ -50,39 +52,6 @@ zs <- exact_extract(mbdnr, bpdn)
 ``` r
 bpdn <- st_read('barrios_DN_ONE.gpkg', quiet = T) #ONE
 mbdn <- st_read('microsoft_buildings_dn_utm.gpkg', quiet = T) #MB, DN
-mbdn
-```
-
-    ## Simple feature collection with 97256 features and 10 fields
-    ## Geometry type: GEOMETRY
-    ## Dimension:     XY
-    ## Bounding box:  xmin: 394548.9 ymin: 2037329 xmax: 407570.8 ymax: 2050611
-    ## Projected CRS: WGS 84 / UTM zone 19N
-    ## First 10 features:
-    ##    PROV MUN DM SECC  BP             TOPONIMIA REG ZONA        ENLACE
-    ## 1    01  01 01   01 062     MARIA AUXILIADORA  10    1 1001010101062
-    ## 2    01  01 01   01 046            CRISTO REY  10    1 1001010101046
-    ## 3    01  01 01   01 003        ARROYO MANZANO  10    1 1001010101003
-    ## 4    01  01 01   01 062     MARIA AUXILIADORA  10    1 1001010101062
-    ## 5    01  01 01   01 056        VILLA CONSUELO  10    1 1001010101056
-    ## 6    01  01 01   01 058    ENSANCHE CAPOTILLO  10    1 1001010101058
-    ## 7    01  01 01   01 053                GAZCUE  10    1 1001010101053
-    ## 8    01  01 01   01 004 ALTOS DE ARROYO HONDO  10    1 1001010101004
-    ## 9    01  01 01   01 001         LOS PERALEJOS  10    1 1001010101001
-    ## 10   01  01 01   01 005              LOS RIOS  10    1 1001010101005
-    ##            CODIGO                           geom
-    ## 1  10010101101062 POLYGON ((406254.7 2045632,...
-    ## 2  10010101101046 POLYGON ((402811 2045939, 4...
-    ## 3  10010101101003 POLYGON ((399117.1 2047661,...
-    ## 4  10010101101062 POLYGON ((406698.8 2045644,...
-    ## 5  10010101101056 POLYGON ((404925.7 2043671,...
-    ## 6  10010101101058 POLYGON ((404355.7 2046533,...
-    ## 7  10010101101053 POLYGON ((404250.6 2042560,...
-    ## 8  10010101101004 POLYGON ((395579.2 2045902,...
-    ## 9  10010101101001 POLYGON ((395309.3 2046418,...
-    ## 10 10010101101005 POLYGON ((397395.4 2044583,...
-
-``` r
 zs <- mbdn %>% mutate(area = st_area(geom)) %>% group_by(BP) %>% summarise(bldg_area = sum(area))
 bpdnbldg <- bpdn %>% inner_join(zs %>% st_drop_geometry)
 ```
@@ -92,48 +61,598 @@ bpdnbldg <- bpdn %>% inner_join(zs %>% st_drop_geometry)
 ``` r
 bpdnbldg <- bpdnbldg %>%
   mutate(area = st_area(geom), prop_bldg = round(units::drop_units((bldg_area / area )*100), 2))
-bpdnbldg
 ```
 
-    ## Simple feature collection with 70 features and 13 fields
-    ## Geometry type: MULTIPOLYGON
-    ## Dimension:     XY
-    ## Bounding box:  xmin: 394514.9 ymin: 2037241 xmax: 407670.6 ymax: 2051052
-    ## Projected CRS: WGS 84 / UTM zone 19N
-    ## First 10 features:
-    ##    PROV MUN DM SECC  BP                TOPONIMIA REG ZONA        ENLACE
-    ## 1    01  01 01   01 007       HONDURAS DEL OESTE  10    1 1001010101007
-    ## 2    01  01 01   01 026                  MIRAMAR  10    1 1001010101026
-    ## 3    01  01 01   01 027        TROPICAL METALDOM  10    1 1001010101027
-    ## 4    01  01 01   01 036               30 DE MAYO  10    1 1001010101036
-    ## 5    01  01 01   01 037                  CACIQUE  10    1 1001010101037
-    ## 6    01  01 01   01 039              MATA HAMBRE  10    1 1001010101039
-    ## 7    01  01 01   01 038     CENTRO DE LOS HEROES  10    1 1001010101038
-    ## 8    01  01 01   01 034 NUESTRA SEÑORA DE LA PAZ  10    1 1001010101034
-    ## 9    01  01 01   01 035  GENERAL ANTONIO DUVERGE  10    1 1001010101035
-    ## 10   01  01 01   01 029                    ATALA  10    1 1001010101029
-    ##            CODIGO       bldg_area                           geom
-    ## 1  10010101101007 202989.85 [m^2] MULTIPOLYGON (((397387.3 20...
-    ## 2  10010101101026 277454.23 [m^2] MULTIPOLYGON (((397366.8 20...
-    ## 3  10010101101027 253466.63 [m^2] MULTIPOLYGON (((399318.4 20...
-    ## 4  10010101101036 108052.70 [m^2] MULTIPOLYGON (((400640.8 20...
-    ## 5  10010101101037 268067.17 [m^2] MULTIPOLYGON (((401024.2 20...
-    ## 6  10010101101039 121840.70 [m^2] MULTIPOLYGON (((401793.8 20...
-    ## 7  10010101101038  92138.79 [m^2] MULTIPOLYGON (((401764 2040...
-    ## 8  10010101101034 137652.19 [m^2] MULTIPOLYGON (((401793.8 20...
-    ## 9  10010101101035 105990.63 [m^2] MULTIPOLYGON (((400817.2 20...
-    ## 10 10010101101029 129865.36 [m^2] MULTIPOLYGON (((400212.7 20...
-    ##               area prop_bldg
-    ## 1   813809.8 [m^2]     24.94
-    ## 2  1043336.2 [m^2]     26.59
-    ## 3  1017606.1 [m^2]     24.91
-    ## 4   336135.8 [m^2]     32.15
-    ## 5   727581.3 [m^2]     36.84
-    ## 6   321304.7 [m^2]     37.92
-    ## 7   518178.8 [m^2]     17.78
-    ## 8   338164.4 [m^2]     40.71
-    ## 9   360545.3 [m^2]     29.40
-    ## 10  314244.0 [m^2]     41.33
+## Tables
+
+``` r
+bpdnbldg_out <- bpdnbldg %>% 
+    st_drop_geometry() %>%
+    dplyr::select(Barrio = TOPONIMIA, `Superf. edif. (%)` = prop_bldg) %>%
+    arrange(desc(`Superf. edif. (%)`))
+if(output_type == 'github_document') {
+  bpdnbldg_out %>% 
+  kable() %>%
+  kable_styling(full_width = TRUE)
+} else {
+    bpdnbldg_out %>% datatable()
+}
+```
+
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Barrio
+</th>
+<th style="text-align:right;">
+Superf. edif. (%)
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+24 DE ABRIL
+</td>
+<td style="text-align:right;">
+48.72
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+VILLA CONSUELO
+</td>
+<td style="text-align:right;">
+48.61
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SAN CARLOS
+</td>
+<td style="text-align:right;">
+47.90
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSANCHE ESPAILLAT
+</td>
+<td style="text-align:right;">
+45.71
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MEJORAMIENTO SOCIAL
+</td>
+<td style="text-align:right;">
+44.02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSANCHE CAPOTILLO
+</td>
+<td style="text-align:right;">
+43.60
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ATALA
+</td>
+<td style="text-align:right;">
+41.33
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LOS RESTAURADORES
+</td>
+<td style="text-align:right;">
+40.88
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+NUESTRA SEÑORA DE LA PAZ
+</td>
+<td style="text-align:right;">
+40.71
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSANCHE QUISQUEYA
+</td>
+<td style="text-align:right;">
+40.28
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MARIA AUXILIADORA
+</td>
+<td style="text-align:right;">
+40.06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SAN JUAN BOSCO
+</td>
+<td style="text-align:right;">
+39.78
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CIUDAD COLONIAL
+</td>
+<td style="text-align:right;">
+39.67
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+PARAISO
+</td>
+<td style="text-align:right;">
+39.06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSANCHE LUPERON
+</td>
+<td style="text-align:right;">
+39.02
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+BUENOS AIRES (INDEPENDENCIA)
+</td>
+<td style="text-align:right;">
+37.98
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MATA HAMBRE
+</td>
+<td style="text-align:right;">
+37.92
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MIRADOR NORTE
+</td>
+<td style="text-align:right;">
+37.57
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+EL MILLON
+</td>
+<td style="text-align:right;">
+37.18
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSANCHE NACO
+</td>
+<td style="text-align:right;">
+36.98
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+VILLA FRANCISCA
+</td>
+<td style="text-align:right;">
+36.93
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CACIQUE
+</td>
+<td style="text-align:right;">
+36.84
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+PIANTINI
+</td>
+<td style="text-align:right;">
+36.06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+JULIETA MORALES
+</td>
+<td style="text-align:right;">
+35.76
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+JARDINES DEL SUR
+</td>
+<td style="text-align:right;">
+35.72
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LOS PRADOS
+</td>
+<td style="text-align:right;">
+35.68
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SIMON BOLIVAR
+</td>
+<td style="text-align:right;">
+35.25
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+VILLA JUANA
+</td>
+<td style="text-align:right;">
+34.26
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SAN GERONIMO
+</td>
+<td style="text-align:right;">
+33.64
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LA AGUSTINA
+</td>
+<td style="text-align:right;">
+33.41
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+RENACIMIENTO
+</td>
+<td style="text-align:right;">
+33.20
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LOS CACICAZGOS
+</td>
+<td style="text-align:right;">
+32.28
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+30 DE MAYO
+</td>
+<td style="text-align:right;">
+32.15
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LA ESPERILLA
+</td>
+<td style="text-align:right;">
+31.42
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+BELLA VISTA
+</td>
+<td style="text-align:right;">
+31.40
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HONDURAS DEL NORTE
+</td>
+<td style="text-align:right;">
+30.83
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+GUALEY
+</td>
+<td style="text-align:right;">
+30.49
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CIUDAD NUEVA
+</td>
+<td style="text-align:right;">
+30.47
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+GAZCUE
+</td>
+<td style="text-align:right;">
+30.39
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MIRAFLORES
+</td>
+<td style="text-align:right;">
+30.19
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MIRADOR SUR
+</td>
+<td style="text-align:right;">
+29.82
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LA ZURZA
+</td>
+<td style="text-align:right;">
+29.48
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+GENERAL ANTONIO DUVERGE
+</td>
+<td style="text-align:right;">
+29.40
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LOS RIOS
+</td>
+<td style="text-align:right;">
+29.20
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LA JULIA
+</td>
+<td style="text-align:right;">
+28.41
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+DOMINGO SAVIO
+</td>
+<td style="text-align:right;">
+28.29
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LOS PERALEJOS
+</td>
+<td style="text-align:right;">
+27.11
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MIRAMAR
+</td>
+<td style="text-align:right;">
+26.59
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+VIEJO ARROYO HONDO
+</td>
+<td style="text-align:right;">
+26.36
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CIUDAD UNIVERSITARIA
+</td>
+<td style="text-align:right;">
+25.83
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LOS JARDINES
+</td>
+<td style="text-align:right;">
+25.41
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+VILLA AGRICOLAS
+</td>
+<td style="text-align:right;">
+25.01
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HONDURAS DEL OESTE
+</td>
+<td style="text-align:right;">
+24.94
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+TROPICAL METALDOM
+</td>
+<td style="text-align:right;">
+24.91
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CRISTO REY
+</td>
+<td style="text-align:right;">
+24.78
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ENSANCHE LA FE
+</td>
+<td style="text-align:right;">
+20.48
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+NUEVO ARROYO HONDO
+</td>
+<td style="text-align:right;">
+19.48
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CENTRO DE LOS HEROES
+</td>
+<td style="text-align:right;">
+17.78
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ALTOS DE ARROYO HONDO
+</td>
+<td style="text-align:right;">
+17.51
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+PUERTO ISABELA
+</td>
+<td style="text-align:right;">
+16.67
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+PALMA REAL
+</td>
+<td style="text-align:right;">
+13.65
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CERROS DE ARROYO HONDO
+</td>
+<td style="text-align:right;">
+10.11
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CENTRO OLIMPICO
+</td>
+<td style="text-align:right;">
+7.98
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ARROYO MANZANO
+</td>
+<td style="text-align:right;">
+6.67
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LA ISABELA
+</td>
+<td style="text-align:right;">
+5.10
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LA HONDONADA
+</td>
+<td style="text-align:right;">
+2.04
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+PASEO DE LOS INDIOS
+</td>
+<td style="text-align:right;">
+0.85
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+JARDIN ZOOLOGICO
+</td>
+<td style="text-align:right;">
+0.67
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+JARDIN BOTANICO
+</td>
+<td style="text-align:right;">
+0.46
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SAN DIEGO
+</td>
+<td style="text-align:right;">
+0.16
+</td>
+</tr>
+</tbody>
+</table>
 
 ## Plots
 
@@ -144,7 +663,7 @@ bpdnbldg %>% ggplot + aes(fill = prop_bldg, label = TOPONIMIA) + geom_sf(lwd = 0
   geom_sf_text(size = 1.5) + scale_fill_distiller(palette = "BrBG") + theme_bw()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-6-1.png" width="100%" />
+<img src="README_files/figure-gfm/unnamed-chunk-7-1.png" width="100%" />
 
 ### tmap
 
@@ -154,7 +673,7 @@ bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
   tm_borders() + tm_text('TOPONIMIA2', size = 0.35)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-7-1.png" width="100%" />
+<img src="README_files/figure-gfm/unnamed-chunk-8-1.png" width="100%" />
 
 ### leaflet
 
@@ -208,4 +727,4 @@ bpdnbldg4326 %>% leaflet() %>%
   suppressWarnings()
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-8-1.png" width="100%" />
+<img src="README_files/figure-gfm/unnamed-chunk-9-1.png" width="100%" />
