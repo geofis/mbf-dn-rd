@@ -70,24 +70,24 @@ bpdnbldg
 
 ### ggplot2
 
-```{r}
+```{r, out.width='100%'}
 bpdnbldg %>% ggplot + aes(fill = prop_bldg, label = TOPONIMIA) + geom_sf(lwd = 0.1) +
-  geom_sf_text(size = 1) + scale_fill_distiller(palette = "BrBG") + theme_bw()
+  geom_sf_text(size = 1.5) + scale_fill_distiller(palette = "BrBG") + theme_bw()
 ```
 
 ### tmap
 
-```{r}
+```{r, out.width='100%'}
 bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
   tm_shape() + tm_fill(col = 'prop_bldg', palette = '-BrBG', title = 'Superficie\nEdificaciones (%)') +
-  tm_borders() + tm_text('TOPONIMIA2', size = 0.3)
+  tm_borders() + tm_text('TOPONIMIA2', size = 0.35)
 ```
 
 ### leaflet
 
 <!-- - Versión interactiva [aquí](https://geofis.github.io/mbf-dn-rd/README.html) -->
 
-```{r}
+```{r, out.width='100%'}
 bpdnbldg4326 <- st_transform(bpdnbldg, 4326)
 pal <- colorNumeric(
   palette = "BrBG",

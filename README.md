@@ -141,20 +141,20 @@ bpdnbldg
 
 ``` r
 bpdnbldg %>% ggplot + aes(fill = prop_bldg, label = TOPONIMIA) + geom_sf(lwd = 0.1) +
-  geom_sf_text(size = 1) + scale_fill_distiller(palette = "BrBG") + theme_bw()
+  geom_sf_text(size = 1.5) + scale_fill_distiller(palette = "BrBG") + theme_bw()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+<img src="README_files/figure-gfm/unnamed-chunk-6-1.png" width="100%" />
 
 ### tmap
 
 ``` r
 bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
   tm_shape() + tm_fill(col = 'prop_bldg', palette = '-BrBG', title = 'Superficie\nEdificaciones (%)') +
-  tm_borders() + tm_text('TOPONIMIA2', size = 0.3)
+  tm_borders() + tm_text('TOPONIMIA2', size = 0.35)
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+<img src="README_files/figure-gfm/unnamed-chunk-7-1.png" width="100%" />
 
 ### leaflet
 
@@ -203,9 +203,9 @@ bpdnbldg4326 %>% leaflet() %>%
     labFormat = labelFormat(suffix = "%"),
     opacity = 1) %>% 
   setView(
-    lat = mean(st_bbox(bpdnbldg4326)[c(2,4)])-0.02,
-    lng = mean(st_bbox(bpdnbldg4326)[c(1,3)]), zoom=13) %>% 
+    lat = mean(st_bbox(bpdnbldg4326)[c(2,4)])-0.015,
+    lng = mean(st_bbox(bpdnbldg4326)[c(1,3)]), zoom=12) %>% 
   suppressWarnings()
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+<img src="README_files/figure-gfm/unnamed-chunk-8-1.png" width="100%" />
