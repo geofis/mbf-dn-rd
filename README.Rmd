@@ -14,18 +14,20 @@ output_type <- rmarkdown:::parse_yaml_front_matter(readLines(knitr::current_inpu
 ```
 
 
-Superficie de edificaciones según barrios del Distrito Nacional, a partir de la base de datos [*Microsoft Building Footprints*](https://www.microsoft.com/en-us/maps/building-footprints) y la división de la [Oficina Nacional de Estadística (ONE) de República Dominicana](https://www.one.gob.do/)
+Superficie (extensión planimétrica) de los techos de edificaciones según barrios del Distrito Nacional, a partir de la base de datos [*Microsoft Building Footprints*](https://www.microsoft.com/en-us/maps/building-footprints) y la división de la [Oficina Nacional de Estadística (ONE) de República Dominicana](https://www.one.gob.do/)
 
 ```{r, warning=FALSE, message=FALSE}
 library(sf)
 library(stars)
 library(sp)
 library(tidyverse)
+library(raster)
 library(exactextractr)
 library(tmap)
 library(leaflet)
 library(DT)
 library(kableExtra)
+library(rgrass7)
 source('wrap_labels.R')
 ```
 
@@ -49,33 +51,31 @@ st_write(mbdn, 'microsoft_buildings_dn_utm.gpkg')
 
 ## Zonal stats
 
-### stars/raster approach
-
-```{r, eval=FALSE}
-template <- st_as_stars(st_bbox(mbdn), dx = 0.3, dy = 0.3, values = NA_real_)
-mbdns <- st_rasterize(mbdn, template = template)
-mbdnr <- as(mbdns, 'Raster')
-zs <- exact_extract(mbdnr, bpdn)
-```
-
 ### sf approach
 
 ```{r}
 bpdn <- st_read('barrios_DN_ONE.gpkg', quiet = T) #ONE
 mbdn <- st_read('microsoft_buildings_dn_utm.gpkg', quiet = T) #MB, DN
-zs <- mbdn %>% mutate(area = st_area(geom)) %>% group_by(BP) %>% summarise(bldg_area = sum(area))
+zs <- mbdn %>% mutate(area = st_area(geom)) %>%
+  group_by(BP) %>% summarise(bldg_area = sum(area), mean_bldg_size = mean(area))
 bpdnbldg <- bpdn %>% inner_join(zs %>% st_drop_geometry)
 bpdnbldg <- bpdnbldg %>%
-  mutate(area = st_area(geom), prop_bldg = round(units::drop_units((bldg_area / area )*100), 2))
+  mutate(area = st_area(geom),
+         prop_bldg = round(units::drop_units((bldg_area / area )*100), 2),
+         mean_bldg_size = round(mean_bldg_size, 2))
+# st_write(bpdnbldg, 'barrios_DN_ONE_con_estadisticas_de_tamano_y_proporcion.gpkg')
 ```
 
 ## Tables
 
 ```{r}
 bpdnbldg_out <- bpdnbldg %>% 
-    st_drop_geometry() %>%
-    dplyr::select(Barrio = TOPONIMIA, `Superf. edif. (%)` = prop_bldg) %>%
-    arrange(desc(`Superf. edif. (%)`))
+  st_drop_geometry() %>%
+  mutate(mean_bldg_size = units::drop_units(mean_bldg_size)) %>% 
+  dplyr::select(Barrio = TOPONIMIA,
+                `Superf. edif. (%)` = prop_bldg,
+                `Tamaño promedio edif. (m2)` = mean_bldg_size) %>%
+  arrange(desc(`Superf. edif. (%)`))
 if(output_type == 'github_document') {
   bpdnbldg_out %>% 
   kable() %>%
@@ -98,8 +98,20 @@ bpdnbldg %>% ggplot + aes(fill = prop_bldg, label = TOPONIMIA) + geom_sf(lwd = 0
 
 ```{r, out.width='100%'}
 bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
+  
   tm_shape() + tm_fill(col = 'prop_bldg', palette = '-BrBG', title = 'Superficie\nEdificaciones (%)') +
   tm_borders() + tm_text('TOPONIMIA2', size = 0.35)
+
+
+bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
+  dplyr::select(Barrio = TOPONIMIA2,
+                `Superf. edif. (%)` = prop_bldg,
+                `Tamaño promedio edif. (m2)` = mean_bldg_size) %>%
+  gather(variable, valor, -Barrio, -geom) %>% 
+  tm_shape() + tm_fill(col = 'valor', palette = '-BrBG', style = 'jenks') +
+  tm_facets('variable', free.scales = T) +
+  tm_layout(legend.outside = F, legend.position = c("RIGHT", "TOP")) +
+  tm_borders() + tm_text('Barrio', size = 0.35)
 ```
 
 ### leaflet
@@ -108,11 +120,11 @@ bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
 
 ```{r, out.width='100%'}
 bpdnbldg4326 <- st_transform(bpdnbldg, 4326)
-pal <- colorNumeric(
-  palette = "BrBG",
-  domain = bpdnbldg4326$prop_bldg,
-  reverse = T
-)
+# pal <- colorNumeric(
+#   palette = "BrBG",
+#   domain = bpdnbldg4326$prop_bldg,
+#   reverse = T
+# )
 pal <- colorBin(
   palette = "BrBG",
   bins = 5,
@@ -151,4 +163,187 @@ bpdnbldg4326 %>% leaflet() %>%
     lat = mean(st_bbox(bpdnbldg4326)[c(2,4)])-0.015,
     lng = mean(st_bbox(bpdnbldg4326)[c(1,3)]), zoom=12) %>% 
   suppressWarnings()
+
+
+
+
+
+
+leaflet_base <- bpdnbldg4326 %>% leaflet() %>% 
+  addTiles(group = 'OSM') %>%
+  addProviderTiles("Esri.NatGeoWorldMap", group="ESRI Mapa") %>%
+  addProviderTiles("Esri.WorldImagery", group="ESRI Imagen") %>%
+  addProviderTiles("CartoDB.Positron", group= "CartoDB") %>%
+  setView(
+    lat = mean(st_bbox(bpdnbldg4326)[c(2,4)])-0.015,
+    lng = mean(st_bbox(bpdnbldg4326)[c(1,3)]), zoom=12) %>% 
+  suppressWarnings()
+
+pal_prop <- colorBin(
+  palette = "BrBG",
+  bins = 5,
+  domain = bpdnbldg4326$prop_bldg,
+  reverse = T
+)
+leaflet_base %>%   addLayersControl(
+    position = 'topleft',
+    overlayGroups = 'Superf. edif. (%)<br>Microsoft Buildings',
+    baseGroups = c("ESRI Imagen", "OSM", "ESRI Mapa", "CartoDB")) %>%
+  addPolygons(group = 'Superf. edif. (%)<br>Microsoft Buildings',
+              fillColor = ~pal(prop_bldg), smoothFactor = 0.2, fillOpacity = 0.75,
+              stroke = TRUE, weight = 1, color = 'grey', label = ~TOPONIMIA,
+              popup = paste0("<b>BP: </b>",
+                             bpdnbldg4326$TOPONIMIA,
+                             "<br>",
+                             "<b>Superf. edif. (%): </b>",
+                             bpdnbldg4326$prop_bldg),
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px",
+                             textsize = "15px", direction = "auto")),
+              highlightOptions = highlightOptions(color = "#10539A",
+                                                  weight = 3, fillColor = NA
+               ),
+              popupOptions = popupOptions(closeOnClick = TRUE)) %>% 
+  addLegend("bottomright", pal = pal, values = ~prop_bldg,
+    title = "Superf. edif. (%)<br>Microsoft Buildings",
+    labFormat = labelFormat(suffix = "%"),
+    opacity = 1)
+
+
+pal_taman <- colorBin(
+  palette = "BrBG",
+  bins = 5,
+  domain = bpdnbldg4326$mean_bldg_size,
+  reverse = T
+)
+leaflet_base %>%   addLayersControl(
+    position = 'topleft',
+    overlayGroups = 'Tamaño medio edif. (m<sup>2</sup>)<br>Microsoft Buildings',
+    baseGroups = c("ESRI Imagen", "OSM", "ESRI Mapa", "CartoDB")) %>%
+  addPolygons(group = 'Tamaño medio edif. (m<sup>2</sup>)<br>Microsoft Buildings',
+              fillColor = ~pal_taman(mean_bldg_size), smoothFactor = 0.2, fillOpacity = 0.75,
+              stroke = TRUE, weight = 1, color = 'grey', label = ~TOPONIMIA,
+              popup = paste0("<b>BP: </b>",
+                             bpdnbldg4326$TOPONIMIA,
+                             "<br>",
+                             "<b>Tamaño medio edif. (m2): </b>",
+                             bpdnbldg4326$prop_bldg),
+              labelOptions = labelOptions(
+                style = list("font-weight" = "normal", padding = "3px 8px",
+                             textsize = "15px", direction = "auto")),
+              highlightOptions = highlightOptions(color = "#10539A",
+                                                  weight = 3, fillColor = NA
+               ),
+              popupOptions = popupOptions(closeOnClick = TRUE)) %>% 
+  addLegend("bottomright", pal = pal_taman, values = ~mean_bldg_size,
+    title = "Tamaño medio edif. (m<sup>2</sup>)<br>Microsoft Buildings",
+    labFormat = labelFormat(suffix = "m<sup>2</sup>"),
+    opacity = 1)
 ```
+
+
+### stars/raster approach
+
+```{r, eval=FALSE}
+# bpdn <- st_read('barrios_DN_ONE.gpkg', quiet = T) #ONE
+# mbdn <- st_read('microsoft_buildings_dn_utm.gpkg', quiet = T) #MB, DN
+resol <- 0.3
+template <- st_as_stars(st_bbox(mbdn), dx = resol, dy = resol, values = NA_real_)
+mbdns <- st_rasterize(mbdn, template = template)
+mbdnr <- as(mbdns, 'Raster')
+mbdnr2 <- raster(mbdnr, layer = 1)
+rm(template)
+gc()
+mbdnr_dist <- distance(mbdnr2)
+zs <- exact_extract(mbdnr_dist, bpdn, 'mean')
+```
+
+### GRASS GIS approach
+
+```{r, eval=FALSE}
+bpdn <- st_read('barrios_DN_ONE.gpkg', quiet = T) #ONE
+mbdn <- st_read('microsoft_buildings_dn_utm.gpkg', quiet = T) #MB, DN
+resol <- 0.3
+template <- st_as_stars(st_bbox(mbdn), dx = resol, dy = resol, values = NA_real_)
+mbdns <- st_rasterize(mbdn, template = template)
+mbdnr <- as(mbdns, 'Raster')
+gisdbase <- 'grass' #Base de datos de GRASS GIS
+wd <- getwd() #Directorio de trabajo
+wd
+loc <- initGRASS(gisBase = "/usr/lib/grass78/",
+                 home = wd,
+                 gisDbase = paste(wd, gisdbase, sep = '/'),
+                 location = 'dn',
+                 mapset = "PERMANENT",
+                 override = TRUE)
+gmeta()
+execGRASS(
+  cmd = 'g.proj',
+  flags = c('t','c'),
+  georef=filename(mbdnr))
+gmeta()
+grass_name_mbdnr <- 'microsoft-bldg-dn'
+execGRASS(
+  cmd = 'r.in.gdal',
+  flags = c('overwrite','quiet'),
+  parameters = list(
+    input = filename(mbdnr),
+    output = grass_name_mbdnr
+  )
+)
+execGRASS(
+  cmd = 'g.region',
+  parameters=list(
+    raster = grass_name_mbdnr,
+    align = grass_name_mbdnr
+  )
+)
+gmeta()
+system('r.grow.distance --help')
+execGRASS(
+  cmd = 'r.grow.distance',
+  flags = c('overwrite','quiet'),
+  parameters = list(
+    input = grass_name_mbdnr,
+    distance = 'distancias'
+  )
+)
+writeVECT(bpdn, 'barrios_parajes_DN_ONE')
+execGRASS(
+  'g.list',
+  flags = 't',
+  parameters = list(
+    type = c('raster', 'vector')
+  )
+)
+system('r.out.gdal --help')
+execGRASS(
+  cmd = 'r.out.gdal',
+  flags = c('overwrite','quiet'),
+  parameters = list(
+    input = 'distancias',
+    output = 'out/distancias.tif'
+  )
+)
+system('v.rast.stats --help')
+execGRASS(
+  'v.rast.stats',
+  parameters = list(
+    map = 'barrios_parajes_DN_ONE',
+    raster = 'distancias',
+    column_prefix = 'estad_'
+  )
+)
+execGRASS(
+  'g.list',
+  flags = 't',
+  parameters = list(
+    type = c('raster', 'vector')
+  )
+)
+# bpdn_de_grass <- readVECT('barrios_parajes_DN_ONE') # Contiene estadisticas
+# st_write(bpdn_de_grass, 'barrios_DN_ONE_con_estadisticas.gpkg')
+bpdn_de_grass <- st_read('barrios_DN_ONE_con_estadisticas.gpkg')
+bpdn_de_grass
+```
+
