@@ -918,9 +918,10 @@ leaflet_base <- bpdnbldg4326 %>% leaflet() %>%
     lng = mean(st_bbox(bpdnbldg4326)[c(1,3)]), zoom=12) %>% 
   suppressWarnings()
 pal_prop <- colorBin(
+  pretty = FALSE,
   palette = "BrBG",
   bins = 5,
-  domain = bpdnbldg4326$prop_bldg,
+  domain = round(bpdnbldg4326$prop_bldg, 0),
   reverse = T
 )
 leaflet_base %>%   addLayersControl(
@@ -955,9 +956,10 @@ leaflet_base %>%   addLayersControl(
 
 ``` r
 pal_taman <- colorBin(
+  pretty = FALSE,
   palette = "BrBG",
   bins = 5,
-  domain = bpdnbldg4326$mean_bldg_size,
+  domain = units::drop_units(round(bpdnbldg4326$mean_bldg_size, 2)),
   reverse = T
 )
 leaflet_base %>%   addLayersControl(
@@ -971,7 +973,7 @@ leaflet_base %>%   addLayersControl(
                              bpdnbldg4326$TOPONIMIA,
                              "<br>",
                              "<b>Tamaño medio edif. (m2): </b>",
-                             bpdnbldg4326$prop_bldg),
+                             bpdnbldg4326$mean_bldg_size),
               labelOptions = labelOptions(
                 style = list("font-weight" = "normal", padding = "3px 8px",
                              textsize = "15px", direction = "auto")),
