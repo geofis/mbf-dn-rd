@@ -63,6 +63,9 @@ bpdnbldg <- bpdnbldg %>%
 
 ## Tables
 
+-   Versión interactiva de esta tabla
+    [aquí](https://geofis.github.io/mbf-dn-rd/README.html)
+
 ``` r
 bpdnbldg_out <- bpdnbldg %>% 
   st_drop_geometry() %>%
@@ -883,15 +886,6 @@ bpdnbldg %>% ggplot + aes(fill = prop_bldg, label = TOPONIMIA) + geom_sf(lwd = 0
 
 ``` r
 bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
-  
-  tm_shape() + tm_fill(col = 'prop_bldg', palette = '-BrBG', title = 'Superficie\nEdificaciones (%)') +
-  tm_borders() + tm_text('TOPONIMIA2', size = 0.35)
-```
-
-<img src="README_files/figure-gfm/unnamed-chunk-7-1.png" width="100%" />
-
-``` r
-bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
   dplyr::select(Barrio = TOPONIMIA2,
                 `Superf. edif. (%)` = prop_bldg,
                 `Tamaño promedio edif. (m2)` = mean_bldg_size) %>%
@@ -905,63 +899,15 @@ bpdnbldg %>% mutate(TOPONIMIA2 = wrap.labels(TOPONIMIA, 15)) %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-<img src="README_files/figure-gfm/unnamed-chunk-7-2.png" width="100%" />
+<img src="README_files/figure-gfm/unnamed-chunk-7-1.png" width="100%" />
 
 ### leaflet
 
--   Versión interactiva
+-   Versión interactiva de este mapa
     [aquí](https://geofis.github.io/mbf-dn-rd/README.html)
 
 ``` r
 bpdnbldg4326 <- st_transform(bpdnbldg, 4326)
-# pal <- colorNumeric(
-#   palette = "BrBG",
-#   domain = bpdnbldg4326$prop_bldg,
-#   reverse = T
-# )
-pal <- colorBin(
-  palette = "BrBG",
-  bins = 5,
-  domain = bpdnbldg4326$prop_bldg,
-  reverse = T
-)
-bpdnbldg4326 %>% leaflet() %>% 
-  addTiles(group = 'OSM') %>%
-  addProviderTiles("Esri.NatGeoWorldMap", group="ESRI Mapa") %>%
-  addProviderTiles("Esri.WorldImagery", group="ESRI Imagen") %>%
-  addProviderTiles("CartoDB.Positron", group= "CartoDB") %>%
-  addLayersControl(
-    position = 'topleft',
-    overlayGroups = 'Superf. edif. (%)<br>Microsoft Buildings',
-    baseGroups = c("ESRI Imagen", "OSM", "ESRI Mapa", "CartoDB")) %>%
-  addPolygons(group = 'Superf. edif. (%)<br>Microsoft Buildings',
-              fillColor = ~pal(prop_bldg), smoothFactor = 0.2, fillOpacity = 0.75,
-              stroke = TRUE, weight = 1, color = 'grey', label = ~TOPONIMIA,
-              popup = paste0("<b>BP: </b>",
-                             bpdnbldg4326$TOPONIMIA,
-                             "<br>",
-                             "<b>Superf. edif. (%): </b>",
-                             bpdnbldg4326$prop_bldg),
-              labelOptions = labelOptions(
-                style = list("font-weight" = "normal", padding = "3px 8px",
-                             textsize = "15px", direction = "auto")),
-              highlightOptions = highlightOptions(color = "#10539A",
-                                                  weight = 3, fillColor = NA
-               ),
-              popupOptions = popupOptions(closeOnClick = TRUE)) %>% 
-  addLegend("bottomright", pal = pal, values = ~prop_bldg,
-    title = "Superf. edif. (%)<br>Microsoft Buildings",
-    labFormat = labelFormat(suffix = "%"),
-    opacity = 1) %>% 
-  setView(
-    lat = mean(st_bbox(bpdnbldg4326)[c(2,4)])-0.015,
-    lng = mean(st_bbox(bpdnbldg4326)[c(1,3)]), zoom=12) %>% 
-  suppressWarnings()
-```
-
-<img src="README_files/figure-gfm/unnamed-chunk-8-1.png" width="100%" />
-
-``` r
 leaflet_base <- bpdnbldg4326 %>% leaflet() %>% 
   addTiles(group = 'OSM') %>%
   addProviderTiles("Esri.NatGeoWorldMap", group="ESRI Mapa") %>%
@@ -971,7 +917,6 @@ leaflet_base <- bpdnbldg4326 %>% leaflet() %>%
     lat = mean(st_bbox(bpdnbldg4326)[c(2,4)])-0.015,
     lng = mean(st_bbox(bpdnbldg4326)[c(1,3)]), zoom=12) %>% 
   suppressWarnings()
-
 pal_prop <- colorBin(
   palette = "BrBG",
   bins = 5,
@@ -983,7 +928,7 @@ leaflet_base %>%   addLayersControl(
     overlayGroups = 'Superf. edif. (%)<br>Microsoft Buildings',
     baseGroups = c("ESRI Imagen", "OSM", "ESRI Mapa", "CartoDB")) %>%
   addPolygons(group = 'Superf. edif. (%)<br>Microsoft Buildings',
-              fillColor = ~pal(prop_bldg), smoothFactor = 0.2, fillOpacity = 0.75,
+              fillColor = ~pal_prop(prop_bldg), smoothFactor = 0.2, fillOpacity = 0.75,
               stroke = TRUE, weight = 1, color = 'grey', label = ~TOPONIMIA,
               popup = paste0("<b>BP: </b>",
                              bpdnbldg4326$TOPONIMIA,
@@ -997,13 +942,16 @@ leaflet_base %>%   addLayersControl(
                                                   weight = 3, fillColor = NA
                ),
               popupOptions = popupOptions(closeOnClick = TRUE)) %>% 
-  addLegend("bottomright", pal = pal, values = ~prop_bldg,
+  addLegend("bottomright", pal = pal_prop, values = ~prop_bldg,
     title = "Superf. edif. (%)<br>Microsoft Buildings",
     labFormat = labelFormat(suffix = "%"),
     opacity = 1)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-8-2.png" width="100%" />
+<img src="README_files/figure-gfm/unnamed-chunk-8-1.png" width="100%" />
+
+-   Versión interactiva de este mapa
+    [aquí](https://geofis.github.io/mbf-dn-rd/README.html)
 
 ``` r
 pal_taman <- colorBin(
@@ -1037,23 +985,7 @@ leaflet_base %>%   addLayersControl(
     opacity = 1)
 ```
 
-<img src="README_files/figure-gfm/unnamed-chunk-8-3.png" width="100%" />
-
-### stars/raster approach
-
-``` r
-# bpdn <- st_read('barrios_DN_ONE.gpkg', quiet = T) #ONE
-# mbdn <- st_read('microsoft_buildings_dn_utm.gpkg', quiet = T) #MB, DN
-resol <- 0.3
-template <- st_as_stars(st_bbox(mbdn), dx = resol, dy = resol, values = NA_real_)
-mbdns <- st_rasterize(mbdn, template = template)
-mbdnr <- as(mbdns, 'Raster')
-mbdnr2 <- raster(mbdnr, layer = 1)
-rm(template)
-gc()
-mbdnr_dist <- distance(mbdnr2)
-zs <- exact_extract(mbdnr_dist, bpdn, 'mean')
-```
+<img src="README_files/figure-gfm/unnamed-chunk-9-1.png" width="100%" />
 
 ### GRASS GIS approach
 
@@ -1142,4 +1074,20 @@ execGRASS(
 # st_write(bpdn_de_grass, 'barrios_DN_ONE_con_estadisticas.gpkg')
 bpdn_de_grass <- st_read('barrios_DN_ONE_con_estadisticas.gpkg')
 bpdn_de_grass
+```
+
+### stars/raster approach
+
+``` r
+# bpdn <- st_read('barrios_DN_ONE.gpkg', quiet = T) #ONE
+# mbdn <- st_read('microsoft_buildings_dn_utm.gpkg', quiet = T) #MB, DN
+resol <- 0.3
+template <- st_as_stars(st_bbox(mbdn), dx = resol, dy = resol, values = NA_real_)
+mbdns <- st_rasterize(mbdn, template = template)
+mbdnr <- as(mbdns, 'Raster')
+mbdnr2 <- raster(mbdnr, layer = 1)
+rm(template)
+gc()
+mbdnr_dist <- distance(mbdnr2)
+zs <- exact_extract(mbdnr_dist, bpdn, 'mean')
 ```
